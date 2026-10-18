@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Drive Viewer</title>
+    <link rel="manifest" href="manifest.json">
+    <!-- html5-qrcode ライブラリの読み込み -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        #reader { width: 100%; max-width: 500px; margin: 0 auto; }
+        #result { margin-top: 20px; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <h1>QRコードでDriveファイルを開く</h1>
+    <div id="reader"></div>
+    <div id="result"></div>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            // QRコードの値を読み取ったときの処理
+            document.getElementById('result').innerHTML = `
+                <p>読み取り成功: <strong>${decodedText}</strong></p>
+                <a href="${decodedText}" target="_blank" style="font-size: 1.2em; color: blue;">ファイルを開く</a>
+            `;
+            // 必要に応じて自動でリンクを開く場合は以下を有効化
+            // window.location.href = decodedText;
+        }
+
+        let html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, // 外側カメラを使用
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            onScanSuccess
+        ).catch(err => {
+            console.error("カメラの起動に失敗しました", err);
+        });
+
+        // サービスワーカーの登録（PWA用）
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker 登録成功'));
+        }
+    </script>
+</body>
+</html>
