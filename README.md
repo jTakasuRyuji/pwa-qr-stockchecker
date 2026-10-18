@@ -1,4 +1,4 @@
-# pwa-qr-stockchecker (v0.1)
+# pwa-qr-stockchecker (v0.2)
 
 [English](#english) | [日本語](#japanese)
 
@@ -8,19 +8,21 @@
 ## 📱 English
 
 ### Overview
-**pwa-qr-stockchecker** is a Progressive Web App (PWA) designed for inventory and asset management. It allows users to scan QR codes on boxes using a smartphone camera and seamlessly search for corresponding documents or files in Google Drive. Inspired by modern QR payment UX, it provides a fast, intuitive, and secure scanning experience.
+**pwa-qr-stockchecker** is a Progressive Web App (PWA) designed for inventory and asset management. It allows users to scan QR codes on boxes using a smartphone camera and seamlessly search for corresponding documents or files in Google Drive. 
+
+In version 0.2, the application has been completely redesigned using **Material Design 3 (MD3)** principles. By utilizing BeerCSS, it abandons standard web proportions to deliver a massive, highly visible, and easily tappable UI that feels exactly like a native Android application.
 
 ### Key Features
-* **PWA Support**: Easily installable on Android and iOS home screens for native-like app usage.
-* **Modern QR Payment UX**: Full-screen camera view with a clean finder frame and clear status guidance.
+* **Material Design 3 UX**: Built with BeerCSS for native-feeling bottom sheets, ripple effects, and ultra-clean, full-screen camera views without unnecessary decorations.
+* **Massive UI Scaling**: Choose from Normal, Large, or X-Large UI scales. The root scaling ensures all buttons, text, and margins scale proportionally for perfect outdoor visibility.
+* **Start Screen (Scene 0)**: Includes an entry screen with a manual "Check for Updates" function to ensure the PWA is always running the latest version.
 * **Google Drive Integration**: Automatically converts scanned codes (UUIDs) into Google Drive search queries.
-* **HTTPS Warning & Confirmation Modal**: Warns users and prompts for confirmation before opening external or HTTPS URLs, ensuring secure browsing.
-* **Display & Font Size Settings**: Customizable text sizes (Normal, Large, Extra Large) via an intuitive settings menu.
-* **PC & Mobile Responsive**: Automatically detects desktop environments and displays a mobile-guidance QR code, with an experimental PC camera test mode.
+* **HTTPS Warning Modal**: Warns users via a bottom sheet before opening external or HTTPS URLs, ensuring secure browsing.
+* **PC & Mobile Auto-Detection**: Displays a mobile-guidance QR code when accessed on a desktop, alongside an experimental PC camera mode.
 
 ### Tech Stack
 * HTML5 / JavaScript (Vanilla)
-* Tailwind CSS
+* BeerCSS (Material Design 3 framework)
 * html5-qrcode (QR Code Scanning)
 * qrcode.js (QR Code Generation)
 
@@ -30,15 +32,17 @@
 ## 📦 日本語
 
 ### 概要
-**pwa-qr-stockchecker** は、備品や資産の管理に特化したプログレッシブ・ウェブ・アプリ（PWA）です。スマートフォンのカメラで箱などのQRコードをスキャンし、Google Drive内の対応する仕様書やドキュメントをスムーズに検索・表示します。決済アプリを参考にした直感的で洗練されたUXを提供します。
+**pwa-qr-stockchecker** は、備品や資産の管理に特化したプログレッシブ・ウェブ・アプリ（PWA）です。スマートフォンのカメラでQRコードをスキャンし、Google Drive内の対応する仕様書やドキュメントをスムーズに検索・表示します。
+
+バージョン0.2では、デザインのベースを **Material Design 3 (MD3)** に完全刷新しました。「Webサイトの基準」を捨て、Androidネイティブアプリと同等の「屋外でも一瞬で視認でき、確実にタップできる巨大なUIスケール」を実現しています。
 
 ### 主な機能
-* **PWA対応**: AndroidやiOSのホーム画面にインストールし、ネイティブアプリのようにすばやく起動できます。
-* **決済アプリ風の洗練されたUX**: 画面いっぱいのカメラプレビューと分かりやすいファインダー枠、視認性の高いステータス表示。
-* **Google Drive連携**: スキャンしたコード（UUID等）を元に、Google Drive内のファイルをダイレクトにキーワード検索。
-* **HTTPS警告・確認モーダル**: 外部URLやHTTPSリンクを読み込んだ際に、安全性の警告と確認ダイアログを表示して誤作動を防止。
-* **表示設定（文字サイズ変更）**: 設定画面から文字サイズ（標準・大・特大）をいつでも自由に変更可能。
-* **PC / スマホ自動切替**: PCでアクセスした際はスマホ誘導用のQRコードを表示。実験的なPCカメラテストモードも搭載。
+* **完璧なMaterial Design 3 UX**: BeerCSSを採用し、タップ時の波紋エフェクトや滑らかなボトムシート、極限まで無駄を削ぎ落としたフルスクリーンカメラビューを提供します。
+* **圧倒的な視認性（UIの一括スケール機能）**: 標準・特大・超特大からサイズを選択可能。ボタン・余白・テキストが完璧な比率を保ったまま巨大化します。
+* **スタート画面（Scene 0）と強制アップデート**: 起動時のエントリー画面を追加。キャッシュによる古い画面の表示を防ぐ「最新版の確認」機能を搭載しました。
+* **Google Drive連携**: スキャンしたコード（UUID等）をGoogle Driveの検索クエリとして自動処理。
+* **HTTPS警告ボトムシート**: 外部URLやHTTPSリンクを読み込んだ際に、安全性の警告ダイアログを表示して意図しないアクセスを防止。
+* **PC / スマホ自動切替**: PCアクセス時はスマホ誘導用のQRコードを表示。実験的なPCカメラテストモードも搭載。
 
 ### ライセンス / License
 This project is licensed under the MIT License.
