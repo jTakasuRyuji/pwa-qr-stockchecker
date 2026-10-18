@@ -3,45 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Drive Viewer</title>
+    <title>Inventory QR Stockchecker</title>
     <link rel="manifest" href="manifest.json">
-    <!-- html5-qrcode ライブラリの読み込み -->
+    <!-- Tailwind CSS (Twitter風のモダンなデザインを構築するため) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        twitter: '#1d9bf0',
+                        twitterHover: '#1a8cd8',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- html5-qrcode ライブラリ -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        #reader { width: 100%; max-width: 500px; margin: 0 auto; }
-        #result { margin-top: 20px; word-break: break-all; }
-    </style>
 </head>
-<body>
-    <h1>QRコードでDriveファイルを開く</h1>
-    <div id="reader"></div>
-    <div id="result"></div>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 px-4 py-3 flex items-center justify-between shadow-sm">
+        <h1 class="text-lg font-bold text-twitter flex items-center gap-2">
+            <span>📦</span> QR Stockchecker
+        </h1>
+        <span class="text-xs bg-blue-50 text-twitter px-2.5 py-1 rounded-full font-medium">PWA Ready</span>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col gap-4">
+        
+        <!-- カメラカード -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+            <h2 class="text-sm font-semibold text-gray-500 mb-3">QRコードスキャナー</h2>
+            <div id="reader" class="overflow-hidden rounded-xl border border-gray-100 bg-black"></div>
+        </div>
+
+        <!-- 読み取り結果カード -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-3">
+            <h2 class="text-sm font-semibold text-gray-500">スキャン結果・検索</h2>
+            <div id="result" class="text-base font-medium text-gray-800 break-all bg-gray-50 p-3 rounded-xl border border-gray-100 min-h-[50px] flex items-center">
+                カメラをQRコードにかざしてください
+            </div>
+            <div id="action-area"></div>
+        </div>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="text-center py-4 text-xs text-gray-400">
+        &copy; Inventory QR Stockchecker PWA
+    </footer>
 
     <script>
         function onScanSuccess(decodedText, decodedResult) {
-            // QRコードの値を読み取ったときの処理
+            console.log(`Code matched = ${decodedText}`, decodedResult);
+            
+            // 読み取った値（例: 部品IDやキーワードなど）をGoogle Driveの検索クエリに変換
+            // Google Driveの検索URL形式: https://drive.google.com/drive/search?q=キーワード
+            const encodedQuery = encodeURIComponent(decodedText);
+            const driveSearchUrl = `https://drive.google.com/drive/search?q=${encodedQuery}`;
+
+            // 結果テキストの更新
             document.getElementById('result').innerHTML = `
-                <p>読み取り成功: <strong>${decodedText}</strong></p>
-                <a href="${decodedText}" target="_blank" style="font-size: 1.2em; color: blue;">ファイルを開く</a>
+                <div class="flex flex-col gap-1 w-full">
+                    <span class="text-xs text-gray-400">読み取り値:</span>
+                    <strong class="text-twitter">${decodedText}</strong>
+                </div>
             `;
-            // 必要に応じて自動でリンクを開く場合は以下を有効化
-            // window.location.href = decodedText;
+
+            // アクションボタン（Twitter風のブルーボタン）の生成
+            document.getElementById('action-area').innerHTML = `
+                <a href="${driveSearchUrl}" target="_blank" 
+                   class="w-full bg-twitter hover:bg-twitterHover text-white font-bold py-3 px-4 rounded-full text-center transition shadow-md flex items-center justify-center gap-2">
+                    <span>Google Driveで検索する</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </a>
+            `;
         }
 
+        // カメラの起動設定
         let html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start(
-            { facingMode: "environment" }, // 外側カメラを使用
-            { fps: 10, qrbox: { width: 250, height: 250 } },
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 230, height: 230 } },
             onScanSuccess
         ).catch(err => {
             console.error("カメラの起動に失敗しました", err);
+            document.getElementById('result').innerText = "カメラの起動に失敗しました。ブラウザのカメラ権限を確認してください。";
         });
 
-        // サービスワーカーの登録（PWA用）
+        // サービスワーカーの登録
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
-                .then(() => console.log('Service Worker 登録成功'));
+                .then(() => console.log('Service Worker 登録成功'))
+                .catch(err => console.log('Service Worker 登録失敗', err));
         }
     </script>
 </body>
