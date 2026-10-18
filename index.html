@@ -86,18 +86,24 @@
                 <p class="text-xs text-gray-400">v0.2 - 備品・在庫管理PWA</p>
             </div>
             <div id="update-status" class="text-xs text-brand-400 font-medium min-h-[1.5rem] flex items-center justify-center">
-                <!-- 更新通知表示領域 -->
+                <!-- 更新通知メッセージ表示エリア -->
             </div>
         </div>
 
+        <!-- アクションボタン群 -->
         <div class="flex flex-col gap-3 max-w-sm w-full mx-auto mb-4">
+            <!-- ＜開始する＞ -->
             <button onclick="startApp()" class="w-full bg-brand-600 active:bg-brand-700 text-white font-bold py-4 rounded-2xl text-center transition shadow-lg shadow-brand-500/20 text-base">
                 開始する
             </button>
+            
+            <!-- ＜最新版の確認＞ -->
             <button onclick="checkLatestVersion()" class="w-full bg-gray-900 active:bg-gray-800 text-gray-300 border border-gray-800 font-semibold py-3.5 rounded-2xl text-center transition text-sm flex items-center justify-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>最新版の確認</span>
             </button>
+
+            <!-- ＜アプリを終了する＞ -->
             <button onclick="closeApp()" class="w-full bg-transparent hover:bg-white/5 text-gray-500 font-medium py-3 rounded-2xl text-center transition text-xs">
                 アプリを終了する
             </button>
@@ -114,4 +120,281 @@
             </button>
             
             <button onclick="openSettings()" class="pointer-events-auto bg-black/40 hover:bg-black/60 active:scale-95 text-white w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+        </header>
+
+        <div id="reader" class="absolute inset-0 w-full h-full"></div>
+
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20 pb-12">
+            <div id="scan-frame" class="w-[72vw] h-[72vw] max-w-[280px] max-h-[280px] rounded-3xl relative border-2 border-white/20 bg-transparent overflow-hidden">
+                <div class="absolute top-0 left-0 w-7 h-7 border-t-4 border-l-4 border-brand-500 rounded-tl-xl"></div>
+                <div class="absolute top-0 right-0 w-7 h-7 border-t-4 border-r-4 border-brand-500 rounded-tr-xl"></div>
+                <div class="absolute bottom-0 left-0 w-7 h-7 border-b-4 border-l-4 border-brand-500 rounded-bl-xl"></div>
+                <div class="absolute bottom-0 right-0 w-7 h-7 border-b-4 border-r-4 border-brand-500 rounded-br-xl"></div>
+                <div class="animate-scan"></div>
+            </div>
+
+            <div id="ui-toast" class="mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-medium px-5 py-2.5 rounded-full text-sm shadow-xl tracking-wide flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
+                <span>QRコードを読み込んでください</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- Scene 2：ボトムシート (結果確認モーダル) -->
+    <!-- ========================================== -->
+    <div id="sheet-overlay" class="hidden absolute inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity duration-300"></div>
+    
+    <div id="bottom-sheet" class="sheet-enter absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] p-6 shadow-2xl flex flex-col gap-5 border-t border-gray-100 max-w-lg mx-auto">
+        <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto -mt-2"></div>
+
+        <div class="flex items-start gap-4">
+            <div id="modal-icon-bg" class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl shrink-0">
+                📦
+            </div>
+            <div class="flex flex-col gap-2">
+                <h1 class="text-2xl font-bold tracking-tight text-white">QR Stockchecker</h1>
+                <p class="text-xs text-gray-400">v0.2 - 備品・在庫管理PWA</p>
+            </div>
+            <div id="update-status" class="text-xs text-brand-400 font-medium min-h-[1.5rem] flex items-center justify-center">
+                <!-- 更新通知表示領域 -->
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-3 max-w-sm w-full mx-auto mb-4">
+            <button onclick="startApp()" class="w-full bg-brand-600 active:bg-brand-700 text-white font-bold py-4 rounded-2xl text-center transition shadow-lg shadow-brand-500/20 text-base">
+                開始する
+            </button>
+            <button onclick="checkLatestVersion()" class="w-full bg-gray-900 active:bg-gray-800 text-gray-300 border border-gray-800 font-semibold py-3.5 rounded-2xl text-center transition text-sm flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>最新版の確認</span>
+            </button>
+            <button onclick="closeApp()" class="w-full bg-transparent hover:bg-white/5 text-gray-500 font-medium py-3 rounded-2xl text-center transition text-xs">
+                アプリを終了する
+        <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">スキャンデータ</span>
+            <p id="modal-scanned-data" class="font-mono text-xs text-gray-800 break-all font-semibold leading-relaxed"></p>
+        </div>
+
+        <div class="flex flex-col gap-2.5 pt-1">
+            <a id="modal-primary-btn" href="#" target="_blank" onclick="handleOpenLink()" class="w-full bg-brand-600 active:bg-brand-700 text-white font-bold py-4 rounded-2xl text-center transition shadow-lg shadow-brand-500/20 text-base flex items-center justify-center gap-2">
+                <span>開く</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </a>
+            <button onclick="closeBottomSheet()" class="w-full bg-gray-100 active:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-2xl text-center transition text-sm">
+                キャンセル (再撮影)
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- Scene 1：スキャン画面 -->
+    <!-- ========================================== -->
+    <div id="scanner-container" class="hidden relative w-full h-full bg-black">
+        <header class="absolute top-0 left-0 right-0 z-30 p-4 pt-6 flex items-center justify-between pointer-events-none">
+            <button onclick="returnToStartScreen()" class="pointer-events-auto bg-black/40 hover:bg-black/60 active:scale-95 text-white w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <button onclick="openSettings()" class="pointer-events-auto bg-black/40 hover:bg-black/60 active:scale-95 text-white w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition shadow-lg">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.7
+    <!-- 設定モーダル -->
+    <div id="settings-modal" class="hidden absolute inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6">
+        <div class="bg-white rounded-[28px] p-6 max-w-xs w-full shadow-2xl flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 class="text-base font-bold text-gray-900">⚙️ アプリ設定</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600 p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">テキストサイズ</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="changeFontSize('normal')" id="btn-size-normal" class="py-2.5 rounded-xl border border-gray-200 font-semibold text-xs transition">標準</button>
+                    <button onclick="changeFontSize('large')" id="btn-size-large" class="py-2.5 rounded-xl border border-gray-200 font-semibold text-sm transition">大</button>
+                    <button onclick="changeFontSize('xlarge')" id="btn-size-xlarge" class="py-2.5 rounded-xl border border-gray-200 font-semibold text-base transition">特大</button>
+                </div>
+            </div>
+
+            <button onclick="closeSettings()" class="w-full bg-brand-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md">
+                完了
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let html5QrCode = null;
+        let isScanned = false;
+
+        function applyFontSize(size) {
+            localStorage.setItem('qr_stock_fontsize', size);
+            const toast = document.getElementById('ui-toast');
+            
+            ['normal', 'large', 'xlarge'].forEach(s => {
+                const btn = document.getElementById(`btn-size-${s}`);
+                if (btn) {
+                    if (s === size) {
+                        btn.className = "py-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 text-brand-600 font-bold text-xs transition";
+                    } else {
+                        btn.className = "py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 font-medium text-xs transition";
+                    }
+                }
+            });
+
+            if (toast) {
+                if (size === 'normal') toast.className = "mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-medium px-5 py-2 rounded-full text-xs shadow-xl tracking-wide flex items-center gap-2";
+                if (size === 'large') toast.className = "mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-medium px-6 py-2.5 rounded-full text-sm shadow-xl tracking-wide flex items-center gap-2";
+                if (size === 'xlarge') toast.className = "mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-bold px-7 py-3 rounded-full text-base shadow-xl tracking-wide flex items-center gap-2";
+            }
+        }
+
+        function changeFontSize(size) { applyFontSize(size); }
+        function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+
+        // --- 画面切り替えロジック ---
+        function startApp() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('scanner-container').classList.remove('hidden');
+            startCamera({ facingMode: "environment" });
+        }
+
+        function returnToStartScreen() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode = null;
+                }).catch(err => console.error(err));
+            }
+            document.getElementById('scanner-container').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        // 最新版の確認（キャッシュクリア＆更新リロード）
+        function checkLatestVersion() {
+            const status = document.getElementById('update-status');
+            status.innerText = "最新バージョンを確認中...";
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (registration) {
+                        registration.update().then(() => {
+                            status.innerText = "最新の状態に更新されました！";
+                            setTimeout(() => {
+                                window.location.reload(true);
+                            }, 800);
+                        });
+                    } else {
+                        window.location.reload(true);
+                    }
+                }).catch(() => {
+                    window.location.reload(true);
+                });
+            } else {
+                window.location.reload(true);
+            }
+        }
+
+        // アプリ終了処理
+        function closeApp() {
+            if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+                window.close();
+            } else {
+                alert("ブラウザのタブまたはアプリを閉じてください。");
+            }
+        }
+
+        function initApp() {
+            const savedSize = localStorage.getItem('qr_stock_fontsize') || 'large';
+            applyFontSize(savedSize);
+
+            const isDesktop = window.innerWidth > 1024 && !('ontouchstart' in window);
+            if (isDesktop) {
+                document.getElementById('pc-guide-screen').classList.remove('hidden');
+                document.getElementById('start-screen').classList.add('hidden');
+                
+                const qrContainer = document.getElementById('qrcode');
+                qrContainer.innerHTML = "";
+                new QRCode(qrContainer, {
+                    text: window.location.href,
+                    width: 140,
+                    height: 140,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+        }
+
+        function startPcCameraMode() {
+            document.getElementById('pc-guide-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function startCamera(cameraConfig) {
+            if (html5QrCode) return;
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                cameraConfig,
+                { fps: 15, qrbox: { width: 260, height: 260 } },
+                onScanSuccess
+            ).catch(err => { console.error("Camera Error", err); });
+        }
+
+        window.addEventListener('load', initApp);
+
+        function onScanSuccess(decodedText) {
+            if (isScanned) return;
+            isScanned = true;
+
+            const iconBg = document.getElementById('modal-icon-bg');
+            const title = document.getElementById('modal-title');
+            const desc = document.getElementById('modal-desc');
+            const scannedData = document.getElementById('modal-scanned-data');
+            const primaryBtn = document.getElementById('modal-primary-btn');
+
+            scannedData.innerText = decodedText;
+
+            if (decodedText.startsWith("https://") || decodedText.startsWith("http://")) {
+                iconBg.className = "w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl shrink-0";
+                iconBg.innerText = "⚠️";
+                title.innerText = "外部Webサイトを開きます";
+                desc.innerText = "安全性を確認の上アクセスしてください。";
+                primaryBtn.href = decodedText;
+            } else {
+                iconBg.className = "w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl shrink-0";
+                iconBg.innerText = "📦";
+                title.innerText = "Google Driveで検索";
+                desc.innerText = "一致するファイルをDrive上で検索します。";
+                const encodedQuery = encodeURIComponent(decodedText);
+                primaryBtn.href = `https://drive.google.com/drive/search?q=${encodedQuery}`;
+            }
+
+            document.getElementById('sheet-overlay').classList.remove('hidden');
+            const sheet = document.getElementById('bottom-sheet');
+            sheet.classList.add('sheet-show');
+
+            if (html5QrCode) html5QrCode.pause();
+        }
+
+        function handleOpenLink() {
+            closeBottomSheet();
+        }
+
+        function closeBottomSheet() {
+            const sheet = document.getElementById('bottom-sheet');
+            sheet.classList.remove('sheet-show');
+            document.getElementById('sheet-overlay').classList.add('hidden');
+            
+            isScanned = false;
+            if (html5QrCode) html5QrCode.resume();
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg fail', err));
+        }
+    </script>
+</body>
+</html>
