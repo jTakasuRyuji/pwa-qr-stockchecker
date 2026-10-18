@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Inventory QR Stockchecker</title>
     <link rel="manifest" href="manifest.json">
     <!-- Tailwind CSS -->
@@ -12,175 +12,202 @@
             theme: {
                 extend: {
                     colors: {
-                        twitter: '#1d9bf0',
-                        twitterHover: '#1a8cd8',
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
                     }
                 }
             }
         }
     </script>
-    <!-- html5-qrcode ライブラリ -->
+    <!-- html5-qrcode & QRCode.js -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
-        #reader {
-            border: none !important;
-            width: 100% !important;
-            height: 100% !important;
+        /* カメラ映像の完全全画面表示 */
+        #reader { border: none !important; width: 100% !important; height: 100% !important; }
+        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
+        #reader__scan_region, #reader__dashboard_section { display: none !important; }
+
+        /* スキャン線の上下アニメーション */
+        @keyframes scan-line {
+            0% { top: 5%; opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { top: 95%; opacity: 0.3; }
         }
-        #reader video {
-            object-fit: cover !important;
-            width: 100% !important;
-            height: 100% !important;
+        .animate-scan {
+            position: absolute;
+            left: 5%;
+            right: 5%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
+            box-shadow: 0 0 12px #0ea5e9;
+            animation: scan-line 2.5s infinite ease-in-out;
         }
-        #reader__scan_region {
-            background: transparent !important;
-        }
-        #reader__dashboard_section {
-            display: none !important;
-        }
+
+        /* ボトムシートの基本アニメーション */
+        .sheet-enter { transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .sheet-show { transform: translateY(0); }
     </style>
 </head>
-<body class="bg-black text-gray-900 h-screen w-screen overflow-hidden flex flex-col font-sans">
+<body class="bg-black text-gray-900 h-screen w-screen overflow-hidden font-sans select-none antialiased">
 
     <!-- ========================================== -->
-    <!-- PC用ガイド画面 -->
+    <!-- PCアクセス時の案内画面 -->
     <!-- ========================================== -->
-    <div id="pc-guide-screen" class="hidden absolute inset-0 z-50 bg-gray-900 text-white flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
-        <div class="max-w-md w-full bg-gray-800 border border-gray-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-6 my-auto">
-            <div class="text-4xl">📦</div>
+    <div id="pc-guide-screen" class="hidden absolute inset-0 z-50 bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-sm w-full bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-6">
+            <div class="w-16 h-16 rounded-2xl bg-brand-500/10 text-brand-500 flex items-center justify-center text-3xl">📦</div>
             <div class="flex flex-col gap-2">
-                <h1 class="text-2xl font-bold">Inventory QR Stockchecker</h1>
-                <p class="text-base text-gray-300 leading-relaxed">
-                    スマートフォンでの利用を想定したPWAアプリです。下のQRコードをスマホでスキャンしてください。
+                <h1 class="text-xl font-bold tracking-tight text-white">QR Stockchecker</h1>
+                <p class="text-xs text-gray-400 leading-relaxed">
+                    スマートフォン専用のPWAツールです。<br>お手元のスマホカメラで以下のQRコードを読み取ってアクセスしてください。
                 </p>
             </div>
-            <div class="bg-white p-4 rounded-2xl shadow-inner flex flex-col items-center gap-2">
-                <div id="qrcode" class="flex justify-center"></div>
-                <span class="text-xs text-gray-600 font-medium">スマホのカメラでスキャン</span>
+            <div class="bg-white p-4 rounded-2xl shadow-lg flex flex-col items-center gap-2">
+                <div id="qrcode"></div>
             </div>
-            <button onclick="startPcCameraMode()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-6 rounded-2xl transition text-base border border-gray-600">
-                🖥️ 【実験的】PCカメラで試すモード
+            <button onclick="startPcCameraMode()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-3 px-4 rounded-xl transition text-xs border border-gray-700">
+                🖥️ PCカメラでテスト起動
             </button>
         </div>
     </div>
 
     <!-- ========================================== -->
-    <!-- スキャン画面 -->
+    <!-- アプリメイン画面 (カメラUI) -->
     <!-- ========================================== -->
-    <div id="scanner-container" class="relative flex-1 w-full h-full bg-black flex flex-col">
-        <header class="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-black/80 to-transparent flex items-center justify-between text-white">
-            <button onclick="location.reload()" class="bg-black/50 hover:bg-black/70 text-white font-bold p-3 rounded-full backdrop-blur-md transition flex items-center justify-center">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+    <div id="scanner-container" class="relative w-full h-full bg-black">
+        <!-- トップ操作バー (ミニマルなガラス効果) -->
+        <header class="absolute top-0 left-0 right-0 z-30 p-4 pt-6 flex items-center justify-between pointer-events-none">
+            <button onclick="location.reload()" class="pointer-events-auto bg-black/40 hover:bg-black/60 active:scale-95 text-white w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-            <div id="scanner-title" class="text-lg font-bold tracking-wider">スキャン</div>
-            <button onclick="openSettings()" class="bg-black/50 hover:bg-black/70 text-white font-bold p-3 rounded-full backdrop-blur-md transition flex items-center justify-center">
-                <span class="text-xl">⚙️</span>
+            
+            <button onclick="openSettings()" class="pointer-events-auto bg-black/40 hover:bg-black/60 active:scale-95 text-white w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             </button>
         </header>
 
+        <!-- カメラプレビュー -->
         <div id="reader" class="absolute inset-0 w-full h-full"></div>
 
-        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
-            <div class="w-[75vw] h-[75vw] max-w-[300px] max-h-[300px] border-2 border-twitter rounded-2xl relative shadow-2xl bg-transparent">
-                <div class="absolute w-6 h-6 border-t-4 border-l-4 border-twitter -top-1 -left-1"></div>
-                <div class="absolute w-6 h-6 border-t-4 border-r-4 border-twitter -top-1 -right-1"></div>
-                <div class="absolute w-6 h-6 border-b-4 border-l-8 border-twitter -bottom-1 -left-1"></div>
-                <div class="absolute w-6 h-6 border-b-4 border-r-4 border-twitter -bottom-1 -right-1"></div>
+        <!-- スキャン枠 & レーザーライン -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20 pb-12">
+            <div id="scan-frame" class="w-[72vw] h-[72vw] max-w-[280px] max-h-[280px] rounded-3xl relative border-2 border-white/20 bg-transparent overflow-hidden">
+                <!-- コーナーガイド -->
+                <div class="absolute top-0 left-0 w-7 h-7 border-t-4 border-l-4 border-brand-500 rounded-tl-xl"></div>
+                <div class="absolute top-0 right-0 w-7 h-7 border-t-4 border-r-4 border-brand-500 rounded-tr-xl"></div>
+                <div class="absolute bottom-0 left-0 w-7 h-7 border-b-4 border-l-4 border-brand-500 rounded-bl-xl"></div>
+                <div class="absolute bottom-0 right-0 w-7 h-7 border-b-4 border-r-4 border-brand-500 rounded-br-xl"></div>
+                <!-- スキャンライン -->
+                <div class="animate-scan"></div>
             </div>
-            <p id="ui-banner-text" class="text-white font-medium mt-6 text-base bg-black/60 px-6 py-2 rounded-full backdrop-blur-md tracking-wide">
-                ピントを合わせてください[cite: 14]
-            </p>
+
+            <!-- 下部ステータストースト -->
+            <div id="ui-toast" class="mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-medium px-5 py-2.5 rounded-full text-sm shadow-xl tracking-wide flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span>
+                <span>QRコードを読み込んでください</span>
+            </div>
         </div>
     </div>
 
     <!-- ========================================== -->
-    <!-- HTTPS警告・確認モーダル (決済アプリ風UX) -->
+    <!-- ボトムシート (結果確認・確認モーダル) -->
     <!-- ========================================== -->
-    <div id="confirm-modal" class="hidden absolute inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6">
-        <div class="bg-white rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-6 animate-slide-up">
-            <div class="flex flex-col items-center text-center gap-3">
-                <div class="w-16 h-16 rounded-full bg-blue-50 text-twitter flex items-center justify-center text-3xl shadow-inner">
-                    🌐
-                </div>
-                <!-- 警告タイトル -->
-                <h2 class="text-xl font-bold text-gray-900">外部のURLを表示します</h2>
-                <p id="warning-message" class="text-sm text-gray-500">このURLは当システムで管理や保証をしていません。表示してよろしいですか？[cite: 13]</p>
-            </div>
+    <div id="sheet-overlay" class="hidden absolute inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity duration-300"></div>
+    
+    <div id="bottom-sheet" class="sheet-enter absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[32px] p-6 shadow-2xl flex flex-col gap-5 border-t border-gray-100 max-w-lg mx-auto">
+        <!-- シートドラッグハンドル -->
+        <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto -mt-2"></div>
 
-            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">読み取りデータ</span>
-                <div id="scanned-id-display" class="font-mono text-xs text-gray-800 break-all font-bold"></div>
+        <!-- ヘッダー（動的切り替え） -->
+        <div class="flex items-start gap-4">
+            <div id="modal-icon-bg" class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl shrink-0">
+                📦
             </div>
+            <div class="flex flex-col gap-0.5">
+                <h2 id="modal-title" class="text-lg font-bold text-gray-900 leading-snug">Google Driveで開く</h2>
+                <p id="modal-desc" class="text-xs text-gray-500 leading-normal">一致するファイルをDrive上で検索します</p>
+            </div>
+        </div>
 
-            <div class="flex flex-col gap-3">
-                <!-- 表示するボタン（青）[cite: 13] -->
-                <a id="drive-link" href="#" target="_blank" onclick="handleDriveOpen()" class="w-full bg-twitter hover:bg-twitterHover text-white font-bold py-4 rounded-2xl text-center transition shadow-lg text-lg flex items-center justify-center gap-2">
-                    <span>表示する[cite: 13]</span>
-                </a>
-                <!-- キャンセルボタン[cite: 13] -->
-                <button onclick="closeConfirmModal()" class="w-full bg-white hover:bg-gray-100 text-gray-700 font-bold py-3.5 rounded-2xl text-center transition text-base border border-gray-200">
-                    キャンセル[cite: 13]
-                </button>
-            </div>
+        <!-- データ表示エリア -->
+        <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">スキャンデータ</span>
+            <p id="modal-scanned-data" class="font-mono text-xs text-gray-800 break-all font-semibold leading-relaxed"></p>
+        </div>
+
+        <!-- アクションボタングループ -->
+        <div class="flex flex-col gap-2.5 pt-1">
+            <a id="modal-primary-btn" href="#" target="_blank" onclick="handleOpenLink()" class="w-full bg-brand-600 active:bg-brand-700 text-white font-bold py-4 rounded-2xl text-center transition shadow-lg shadow-brand-500/20 text-base flex items-center justify-center gap-2">
+                <span>開く</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </a>
+            <button onclick="closeBottomSheet()" class="w-full bg-gray-100 active:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-2xl text-center transition text-sm">
+                キャンセル (再撮影)
+            </button>
         </div>
     </div>
 
     <!-- ========================================== -->
     <!-- 設定モーダル -->
     <!-- ========================================== -->
-    <div id="settings-modal" class="hidden absolute inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
-        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-6">
-            <div class="flex items-center justify-between border-b pb-4">
-                <h2 class="text-xl font-bold text-gray-900">⚙️ 表示設定</h2>
-                <button onclick="closeSettings()" class="text-gray-500 hover:text-gray-700 text-2xl font-bold p-1">✕</button>
+    <div id="settings-modal" class="hidden absolute inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6">
+        <div class="bg-white rounded-[28px] p-6 max-w-xs w-full shadow-2xl flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 class="text-base font-bold text-gray-900">⚙️ アプリ設定</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600 p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
 
             <div class="flex flex-col gap-3">
-                <label class="text-base font-bold text-gray-700">文字サイズ選択</label>
-                <div class="grid grid-cols-3 gap-3">
-                    <button onclick="changeFontSize('normal')" id="btn-size-normal" class="py-3 px-4 rounded-xl border-2 font-bold text-base transition">標準</button>
-                    <button onclick="changeFontSize('large')" id="btn-size-large" class="py-3 px-4 rounded-xl border-2 font-bold text-lg transition">大</button>
-                    <button onclick="changeFontSize('xlarge')" id="btn-size-xlarge" class="py-3 px-4 rounded-xl border-2 font-bold text-xl transition">特大</button>
+                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">テキストサイズ</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="changeFontSize('normal')" id="btn-size-normal" class="py-2.5 rounded-xl border border-gray-200 font-semibold text-xs transition">標準</button>
+                    <button onclick="changeFontSize('large')" id="btn-size-large" class="py-2.5 rounded-xl border border-gray-200 font-semibold text-sm transition">大</button>
+                    <button onclick="changeFontSize('xlarge')" id="btn-size-xlarge" class="py-2.5 rounded-xl border border-gray-200 font-semibold text-base transition">特大</button>
                 </div>
             </div>
 
-            <button onclick="closeSettings()" class="w-full bg-twitter text-white font-bold py-4 rounded-2xl shadow-lg text-lg">
-                設定を保存して閉じる
+            <button onclick="closeSettings()" class="w-full bg-brand-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md">
+                完了
             </button>
         </div>
     </div>
 
+    <!-- Script Logic -->
     <script>
         let html5QrCode = null;
         let isScanned = false;
 
+        // フォントサイズ設定
         function applyFontSize(size) {
             localStorage.setItem('qr_stock_fontsize', size);
-            const banner = document.getElementById('ui-banner-text');
+            const toast = document.getElementById('ui-toast');
             
             ['normal', 'large', 'xlarge'].forEach(s => {
                 const btn = document.getElementById(`btn-size-${s}`);
                 if (btn) {
                     if (s === size) {
-                        btn.className = "py-3 px-4 rounded-xl border-2 border-twitter bg-blue-50 text-twitter font-bold transition text-lg";
+                        btn.className = "py-2.5 rounded-xl border-2 border-brand-500 bg-brand-50 text-brand-600 font-bold text-xs transition";
                     } else {
-                        btn.className = "py-3 px-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-700 font-bold transition text-base";
+                        btn.className = "py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 font-medium text-xs transition";
                     }
                 }
             });
 
-            if (banner) {
-                if (size === 'normal') banner.className = "text-white font-medium mt-6 text-sm bg-black/60 px-6 py-2 rounded-full backdrop-blur-md tracking-wide";
-                if (size === 'large') banner.className = "text-white font-medium mt-6 text-sm bg-black/60 px-6 py-2 rounded-full backdrop-blur-md tracking-wide text-lg";
-                if (size === 'xlarge') banner.className = "text-white font-medium mt-6 text-sm bg-black/60 px-6 py-2 rounded-full backdrop-blur-md tracking-wide text-xl font-bold";
+            if (toast) {
+                if (size === 'normal') toast.className = "mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-medium px-5 py-2 rounded-full text-xs shadow-xl tracking-wide flex items-center gap-2";
+                if (size === 'large') toast.className = "mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-medium px-6 py-2.5 rounded-full text-sm shadow-xl tracking-wide flex items-center gap-2";
+                if (size === 'xlarge') toast.className = "mt-8 bg-black/60 backdrop-blur-xl border border-white/10 text-white font-bold px-7 py-3 rounded-full text-base shadow-xl tracking-wide flex items-center gap-2";
             }
         }
 
-        function changeFontSize(size) {
-            applyFontSize(size);
-        }
-
+        function changeFontSize(size) { applyFontSize(size); }
         function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
         function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
 
@@ -197,8 +224,8 @@
                 qrContainer.innerHTML = "";
                 new QRCode(qrContainer, {
                     text: window.location.href,
-                    width: 160,
-                    height: 160,
+                    width: 140,
+                    height: 140,
                     colorDark: "#000000",
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
@@ -219,65 +246,64 @@
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start(
                 cameraConfig,
-                { fps: 10, qrbox: { width: 280, height: 280 } },
+                { fps: 15, qrbox: { width: 260, height: 260 } },
                 onScanSuccess
-            ).catch(err => {
-                console.error("カメラ起動エラー", err);
-            });
+            ).catch(err => { console.error("Camera Error", err); });
         }
 
         window.addEventListener('load', initApp);
 
-        function onScanSuccess(decodedText, decodedResult) {
+        function onScanSuccess(decodedText) {
             if (isScanned) return;
             isScanned = true;
 
-            let targetUrl = "";
-            let warningText = "";
+            const iconBg = document.getElementById('modal-icon-bg');
+            const title = document.getElementById('modal-title');
+            const desc = document.getElementById('modal-desc');
+            const scannedData = document.getElementById('modal-scanned-data');
+            const primaryBtn = document.getElementById('modal-primary-btn');
 
-            // HTTPSスキーマ（URL）かどうかを判定
+            scannedData.innerText = decodedText;
+
+            // HTTPS URLか通常のキーワード/UUIDかでUIを切り替え
             if (decodedText.startsWith("https://") || decodedText.startsWith("http://")) {
-                targetUrl = decodedText;
-                warningText = `このURL (${decodedText}) は外部のWebサイトです。安全性を確認の上、表示してください。[cite: 13]`;
+                iconBg.className = "w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl shrink-0";
+                iconBg.innerText = "⚠️";
+                title.innerText = "外部Webサイトを開きます";
+                desc.innerText = "安全性を確認の上アクセスしてください。";
+                primaryBtn.href = decodedText;
             } else {
-                // 通常のUUIDなどの場合はGoogle Drive検索URLを生成
+                iconBg.className = "w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl shrink-0";
+                iconBg.innerText = "📦";
+                title.innerText = "Google Driveで検索";
+                desc.innerText = "一致するファイルをDrive上で検索します。";
                 const encodedQuery = encodeURIComponent(decodedText);
-                targetUrl = `https://drive.google.com/drive/search?q=${encodedQuery}`;
-                warningText = `読み取ったコード "${decodedText}" でGoogle Drive内を検索します。`;
+                primaryBtn.href = `https://drive.google.com/drive/search?q=${encodedQuery}`;
             }
 
-            // モーダルに反映して警告表示[cite: 13]
-            document.getElementById('scanned-id-display').innerText = decodedText;
-            document.getElementById('warning-message').innerText = warningText;
-            document.getElementById('drive-link').href = targetUrl;
-            document.getElementById('confirm-modal').classList.remove('hidden');
+            // ボトムシートの表示
+            document.getElementById('sheet-overlay').classList.remove('hidden');
+            const sheet = document.getElementById('bottom-sheet');
+            sheet.classList.add('sheet-show');
 
-            if (html5QrCode) {
-                html5QrCode.pause();
-            }
+            if (html5QrCode) html5QrCode.pause();
         }
 
-        function handleDriveOpen() {
-            closeConfirmModal();
-            resetScanner();
+        function handleOpenLink() {
+            closeBottomSheet();
         }
 
-        function closeConfirmModal() {
-            document.getElementById('confirm-modal').classList.add('hidden');
-            resetScanner();
-        }
-
-        function resetScanner() {
+        function closeBottomSheet() {
+            const sheet = document.getElementById('bottom-sheet');
+            sheet.classList.remove('sheet-show');
+            document.getElementById('sheet-overlay').classList.add('hidden');
+            
             isScanned = false;
-            if (html5QrCode) {
-                html5QrCode.resume();
-            }
+            if (html5QrCode) html5QrCode.resume();
         }
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log('Service Worker 登録成功'))
-                .catch(err => console.log('Service Worker 登録失敗', err));
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg fail', err));
         }
     </script>
 </body>
