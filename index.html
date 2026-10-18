@@ -6,8 +6,6 @@
     <title>Inventory QR Stockchecker</title>
     <link rel="manifest" href="manifest.json?v=0.2">
     
-    <!-- ⚠️ Tailwind CSSは競合の原因となるため完全に削除しました -->
-
     <!-- BeerCSS & Material Design 3 (CDN) -->
     <link href="https://cdn.jsdelivr.net/npm/beercss@3.7.12/dist/cdn/beer.min.css" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.7.12/dist/cdn/beer.min.js"></script>
@@ -49,6 +47,7 @@
             align-items: center;
             gap: 12px;
             font-weight: bold;
+            cursor: pointer;
         }
 
         .icon-massive { font-size: 6rem !important; margin-bottom: 1rem; color: var(--primary); }
@@ -119,7 +118,7 @@
     </main>
 
     <!-- ========================================== -->
-    <!-- Scene 1：スキャン画面 -->
+    <!-- Scene 1：スキャン画面 (完全全画面スキャン) -->
     <!-- ========================================== -->
     <div id="scanner-container" class="hidden">
         <div class="overlay-ui top-nav">
@@ -152,10 +151,10 @@
             <div id="modal-scanned-data" style="font-size: 1.5rem; font-weight: bold; word-break: break-all; margin-top: 0.5rem;"></div>
         </div>
 
-        <button id="modal-primary-btn" class="btn-massive primary" onclick="handleOpenLink()">
+        <a id="modal-primary-btn" class="btn-massive primary" href="#" target="_blank" onclick="handleOpenLink()" style="text-decoration: none;">
             <i class="material-symbols-outlined" style="font-size: 2rem;">open_in_new</i>
-            <span>開く</span>
-        </button>
+            <span id="modal-primary-btn-text">開く</span>
+        </a>
         <button class="btn-massive transparent" onclick="closeBottomSheet()">
             キャンセル (再撮影)
         </button>
@@ -181,8 +180,10 @@
         let html5QrCode = null;
         let isScanned = false;
 
+        // テーマカラーの適用 (BeerCSS)
         ui('theme', '#0284c7');
 
+        // 文字サイズの一括変更
         function applyFontSize(size) {
             localStorage.setItem('qr_stock_fontsize', size);
             const htmlElement = document.documentElement;
@@ -275,14 +276,18 @@
             document.getElementById('start-screen').classList.remove('hidden');
         }
 
+        // ★修正ポイント: qrboxを削除し、全画面でのスキャンに変更（エラー回避とUX向上）
         function startCamera(cameraConfig) {
             if (html5QrCode) return;
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start(
                 cameraConfig,
-                { fps: 15, qrbox: { width: 400, height: 400 } },
+                { fps: 15 }, 
                 onScanSuccess
-            ).catch(err => { console.error("Camera Error", err); });
+            ).catch(err => { 
+                console.error("Camera Error", err); 
+                alert("カメラの起動に失敗しました。権限や環境を確認してください。");
+            });
         }
 
         window.addEventListener('load', initApp);
@@ -295,20 +300,22 @@
             const desc = document.getElementById('modal-desc');
             const scannedData = document.getElementById('modal-scanned-data');
             const primaryBtn = document.getElementById('modal-primary-btn');
+            const primaryBtnText = document.getElementById('modal-primary-btn-text');
 
             scannedData.innerText = decodedText;
 
+            // HTTPS等の場合の警告・分岐ロジック
             if (decodedText.startsWith("https://") || decodedText.startsWith("http://")) {
                 title.innerText = "⚠️ 外部Webサイト";
                 desc.innerText = "安全性を確認の上アクセスしてください。";
-                primaryBtn.querySelector('span').innerText = "サイトを開く";
+                primaryBtnText.innerText = "サイトを開く";
                 primaryBtn.href = decodedText;
                 primaryBtn.style.backgroundColor = "var(--error)";
                 primaryBtn.style.color = "var(--on-error)";
             } else {
                 title.innerText = "Google Drive検索";
                 desc.innerText = "一致するファイルを検索します";
-                primaryBtn.querySelector('span').innerText = "検索する";
+                primaryBtnText.innerText = "検索する";
                 const encodedQuery = encodeURIComponent(decodedText);
                 primaryBtn.href = `https://drive.google.com/drive/search?q=${encodedQuery}`;
                 primaryBtn.style.backgroundColor = ""; 
