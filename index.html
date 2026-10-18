@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory QR Stockchecker</title>
     <link rel="manifest" href="manifest.json">
-    <!-- Tailwind CSS (Twitter風のモダンなデザインを構築するため) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -21,78 +21,147 @@
     </script>
     <!-- html5-qrcode ライブラリ -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        /* カメラ映像を画面全体に綺麗にフィットさせるためのスタイル */
+        #reader {
+            border: none !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #reader video {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        /* html5-qrcodeのデフォルト要素を非表示に */
+        #reader__scan_region {
+            background: transparent !important;
+        }
+        #reader__dashboard_section {
+            display: none !important;
+        }
+
+        /* アニメーション用 */
+        .slide-down {
+            animation: slideDown 0.3s ease-out forwards;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-black text-gray-900 h-screen w-screen overflow-hidden flex flex-col">
 
-    <!-- ヘッダー -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 px-4 py-3 flex items-center justify-between shadow-sm">
-        <h1 class="text-lg font-bold text-twitter flex items-center gap-2">
-            <span>📦</span> QR Stockchecker
-        </h1>
-        <span class="text-xs bg-blue-50 text-twitter px-2.5 py-1 rounded-full font-medium">PWA Ready</span>
-    </header>
-
-    <!-- メインコンテンツ -->
-    <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col gap-4">
+    <!-- メイン：カメラ領域（画面全体） -->
+    <main class="relative flex-1 w-full h-full bg-black">
+        <div id="reader" class="absolute inset-0 w-full h-full"></div>
         
-        <!-- カメラカード -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-            <h2 class="text-sm font-semibold text-gray-500 mb-3">QRコードスキャナー</h2>
-            <div id="reader" class="overflow-hidden rounded-xl border border-gray-100 bg-black"></div>
+        <!-- スキャンガイド用の枠（中央） -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-48 h-48 border-2 border-white/50 rounded-3xl"></div>
+            <div class="absolute w-16 h-16 border-t-4 border-l-4 border-twitter top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-tl-xl"></div>
         </div>
-
-        <!-- 読み取り結果カード -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-3">
-            <h2 class="text-sm font-semibold text-gray-500">スキャン結果・検索</h2>
-            <div id="result" class="text-base font-medium text-gray-800 break-all bg-gray-50 p-3 rounded-xl border border-gray-100 min-h-[50px] flex items-center">
-                カメラをQRコードにかざしてください
-            </div>
-            <div id="action-area"></div>
-        </div>
-
     </main>
 
-    <!-- フッター -->
-    <footer class="text-center py-4 text-xs text-gray-400">
-        &copy; Inventory QR Stockchecker PWA
-    </footer>
+    <!-- オーバーレイUI（上部ヘッダーエリア） -->
+    <div class="absolute top-0 left-0 right-0 z-30 p-4 flex flex-col gap-3">
+        
+        <!-- ヘッダー部分（通常時） -->
+        <header id="app-header" class="bg-black/50 backdrop-blur-sm text-white px-4 py-2.5 rounded-full flex items-center justify-between transition-all duration-300 border border-white/10">
+            <h1 class="text-sm font-bold flex items-center gap-2">
+                <span>📦</span> QR Stock
+            </h1>
+            <span class="text-xs text-gray-300">スキャン待機中...</span>
+        </header>
+
+        <!-- 読み取り成功時の通知カード（上部にオーバーレイ表示） -->
+        <div id="result-card" class="hidden bg-white rounded-3xl shadow-2xl p-5 flex flex-col gap-4 slide-down border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-green-100 flex items-center justify-center text-green-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-900">読み取り成功！</p>
+                        <p id="scanned-id-display" class="text-xs font-mono text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded"></p>
+                    </div>
+                </div>
+                <!-- キャンセル（再撮影）ボタン（×アイコン） -->
+                <button id="cancel-btn-x" class="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <!-- キャンセル（再撮影）ボタン（テキスト） -->
+                <button id="cancel-btn-text" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-full text-center transition flex items-center justify-center gap-1.5 text-sm">
+                    <span>再撮影</span>
+                </button>
+                
+                <!-- Google Driveで開くボタン -->
+                <a id="drive-link" href="#" target="_blank" class="w-full bg-twitter hover:bg-twitterHover text-white font-bold py-3 px-4 rounded-full text-center transition shadow-md flex items-center justify-center gap-1.5 text-sm">
+                    <span>Driveで開く</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </a>
+            </div>
+        </div>
+    </div>
 
     <script>
+        let html5QrCode = null;
+        let isScanned = false;
+
         function onScanSuccess(decodedText, decodedResult) {
-            console.log(`Code matched = ${decodedText}`, decodedResult);
-            
-            // 読み取った値（例: 部品IDやキーワードなど）をGoogle Driveの検索クエリに変換
-            // Google Driveの検索URL形式: https://drive.google.com/drive/search?q=キーワード
+            if (isScanned) return; // 連続読み取り防止
+            isScanned = true;
+
+            console.log(`Matched = ${decodedText}`);
+
+            // Google Driveの検索URL生成
             const encodedQuery = encodeURIComponent(decodedText);
             const driveSearchUrl = `https://drive.google.com/drive/search?q=${encodedQuery}`;
 
-            // 結果テキストの更新
-            document.getElementById('result').innerHTML = `
-                <div class="flex flex-col gap-1 w-full">
-                    <span class="text-xs text-gray-400">読み取り値:</span>
-                    <strong class="text-twitter">${decodedText}</strong>
-                </div>
-            `;
+            // UIの切り替え（ヘッダーを隠して結果カードを表示）
+            document.getElementById('app-header').classList.add('hidden');
+            document.getElementById('result-card').classList.remove('hidden');
+            document.getElementById('scanned-id-display').innerText = decodedText;
+            document.getElementById('drive-link').href = driveSearchUrl;
 
-            // アクションボタン（Twitter風のブルーボタン）の生成
-            document.getElementById('action-area').innerHTML = `
-                <a href="${driveSearchUrl}" target="_blank" 
-                   class="w-full bg-twitter hover:bg-twitterHover text-white font-bold py-3 px-4 rounded-full text-center transition shadow-md flex items-center justify-center gap-2">
-                    <span>Google Driveで検索する</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                </a>
-            `;
+            // カメラのスキャンを一時停止
+            if (html5QrCode) {
+                html5QrCode.pause();
+            }
         }
 
-        // カメラの起動設定
-        let html5QrCode = new Html5Qrcode("reader");
+        // キャンセル（再撮影）ボタンの共通処理
+        function resetScanner() {
+            isScanned = false;
+            document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('app-header').classList.remove('hidden');
+
+            // カメラのスキャンを再開
+            if (html5QrCode) {
+                html5QrCode.resume();
+            }
+        }
+
+        document.getElementById('cancel-btn-x').addEventListener('click', resetScanner);
+        document.getElementById('cancel-btn-text').addEventListener('click', resetScanner);
+
+        // カメラ起動設定
+        html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 230, height: 230 } },
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 200, height: 200 } }, // ガイド枠に合わせて小さめに
             onScanSuccess
         ).catch(err => {
             console.error("カメラの起動に失敗しました", err);
-            document.getElementById('result').innerText = "カメラの起動に失敗しました。ブラウザのカメラ権限を確認してください。";
+            // エラー時はアラートではなく、UIにメッセージを表示する方がスマートです
+            const header = document.getElementById('app-header');
+            header.innerHTML = '<span class="text-red-400 text-xs">カメラ起動失敗。権限を確認してください。</span>';
+            header.classList.remove('bg-black/50');
+            header.classList.add('bg-red-900/80');
         });
 
         // サービスワーカーの登録
