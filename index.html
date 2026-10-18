@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventory QR Stockchecker</title>
-    <link rel="manifest" href="manifest.json?v=0.2">
+    <title>Inventory QR Stockchecker v0.2.2(banana)</title>
+    <link rel="manifest" href="manifest.json?v=0.2.2">
     
-    <!-- BeerCSS & Material Design 3 (CDN) -->
+    <!-- BeerCSS & Google Material Icons -->
     <link href="https://cdn.jsdelivr.net/npm/beercss@3.7.12/dist/cdn/beer.min.css" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.7.12/dist/cdn/beer.min.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
-    <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
 
     <!-- html5-qrcode & QRCode.js -->
@@ -19,159 +18,189 @@
 
     <style>
         /* ==========================================
-           スマホで絶対に小さくならないための強制レイアウト
+           ATM・券売機ライクな超大型UI（文字250%拡大 & 色の機能分離）
            ========================================== */
-        body { margin: 0; height: 100vh; overflow: hidden; background-color: var(--background); }
+        :root {
+            font-size: 30px !important; /* スマホ実機で確実に大きく読めるベースサイズ */
+        }
+
+        body { 
+            margin: 0; 
+            height: 100vh; 
+            overflow: hidden; 
+            background-color: #0f172a; /* 深みのあるダークネイビー（ATM風背景） */
+            color: #ffffff;
+            font-family: sans-serif;
+        }
         
-        /* 画面中央への配置 */
         .fullscreen-flex {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            padding: 2rem;
+            padding: 1.5rem;
             box-sizing: border-box;
         }
-        .w-full { width: 100%; max-width: 450px; margin: 0 auto; }
-        
-        /* 絶対に小さくならない巨大ボタンとテキスト */
-        .btn-massive {
+
+        .action-container {
             width: 100%;
-            min-height: 80px !important;
-            font-size: 1.5rem !important;
+            max-width: 550px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        /* ATMのタッチパネル風 巨大ボタン基底クラス */
+        .atm-btn {
+            width: 100%;
+            min-height: 96px !important;
+            font-size: 1.8rem !important;
             border-radius: 24px !important;
-            margin-bottom: 1rem;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 12px;
-            font-weight: bold;
+            gap: 16px;
+            font-weight: 900 !important;
             cursor: pointer;
+            border: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease;
+        }
+        .atm-btn:active {
+            transform: scale(0.97);
         }
 
-        .icon-massive { font-size: 6rem !important; margin-bottom: 1rem; color: var(--primary); }
-        .title-massive { font-size: 3rem !important; font-weight: 900; margin-bottom: 0.5rem; text-align: center; }
-        .text-massive { font-size: 1.2rem !important; text-align: center; color: var(--on-surface-variant); font-weight: bold; }
+        /* 1. 正道・主要操作（ブルー：開始する、検索するなど） */
+        .atm-primary {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+        }
 
-        /* カメラ周り */
+        /* 2. 特殊・警告操作（オレンジ/アンバー：最新版確認など） */
+        .atm-warning {
+            background-color: #d97706 !important;
+            color: #ffffff !important;
+        }
+
+        /* 3. 終了・閉じる・キャンセル操作（グレー：終了する、キャンセルなど） */
+        .atm-neutral {
+            background-color: #334155 !important;
+            color: #cbd5e1 !important;
+            border: 2px solid #475569 !important;
+        }
+
+        .app-icon { font-size: 5.5rem !important; color: #60a5fa; margin-bottom: 0.2rem; }
+        .app-title { font-size: 3rem !important; font-weight: 900; margin-bottom: 0.1rem; text-align: center; }
+        .app-version { font-size: 1.3rem !important; text-align: center; color: #94a3b8; font-weight: bold; margin-bottom: 1.5rem; }
+
+        /* カメラ・スキャン周り */
         #reader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; background: #000; }
         #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
         #reader__scan_region, #reader__dashboard_section { display: none !important; }
         
         .overlay-ui { position: fixed; z-index: 10; }
         .top-nav { top: 1.5rem; left: 1.5rem; right: 1.5rem; display: flex; justify-content: space-between; pointer-events: none; }
-        .top-nav button { pointer-events: auto; width: 64px; height: 64px; }
-        .bottom-toast { bottom: 4rem; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; }
+        .top-nav button { pointer-events: auto; width: 80px; height: 80px; border-radius: 50%; background: rgba(0,0,0,0.7); color: white; border: none; }
         
-        .toast-massive {
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 24px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: center;
-            backdrop-filter: blur(10px);
+        .bottom-toast { 
+            bottom: 4rem; left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 450px; 
+            background: rgba(15, 23, 42, 0.9); color: white; 
+            padding: 1.8rem; border-radius: 24px; 
+            font-size: 1.6rem; font-weight: 900; text-align: center; 
+            backdrop-filter: blur(12px);
+            border: 3px solid #3b82f6;
         }
 
         .hidden { display: none !important; }
     </style>
 </head>
-<body class="dark">
+<body>
 
     <!-- ========================================== -->
     <!-- PCアクセス時の案内画面 -->
     <!-- ========================================== -->
     <main id="pc-guide-screen" class="fullscreen-flex hidden">
-        <i class="material-symbols-outlined icon-massive">inventory_2</i>
-        <div class="title-massive" style="font-size: 2rem !important;">QR Stockchecker</div>
-        <div class="text-massive" style="margin-bottom: 2rem;">お手元のスマホでスキャンしてください</div>
-        <div id="qrcode" style="background:white; padding:1.5rem; border-radius:1rem;"></div>
-        <div style="margin-top: 2rem; width: 100%; max-width: 400px;">
-            <button class="btn-massive border" onclick="startPcCameraMode()">PCカメラでテスト起動</button>
+        <i class="material-symbols-outlined app-icon">inventory_2</i>
+        <div class="app-title">QR Stock</div>
+        <div class="app-version">v0.2.2(banana)</div>
+        <div style="background:white; padding:1.5rem; border-radius:1.5rem; margin-bottom: 1.5rem;">
+            <div id="qrcode"></div>
+        </div>
+        <div class="action-container">
+            <button class="atm-btn atm-neutral" onclick="startPcCameraMode()">PCカメラでテスト起動</button>
         </div>
     </main>
 
     <!-- ========================================== -->
-    <!-- Scene 0：スタート・最新版確認画面 -->
+    <!-- Scene 0：スタート・最新版確認画面 (v0.2.2) -->
     <!-- ========================================== -->
     <main id="start-screen" class="fullscreen-flex">
-        <i class="material-symbols-outlined icon-massive">inventory_2</i>
-        <div class="title-massive">QR Stock</div>
-        <div class="text-massive">v0.2 - 備品・在庫管理PWA</div>
-        <div id="update-status" class="text-massive" style="min-height: 2rem; margin-bottom: 2rem; color: var(--primary);"></div>
+        <i class="material-symbols-outlined app-icon">inventory_2</i>
+        <div class="app-title">QR Stock</div>
+        <div class="app-version">v0.2.2(banana)</div>
+        <div id="update-status" style="font-size: 1.3rem; color: #60a5fa; font-weight: bold; min-height: 2rem; margin-bottom: 1rem; text-align: center;"></div>
 
-        <div class="w-full">
-            <button class="btn-massive primary" onclick="startApp()">
-                <i class="material-symbols-outlined" style="font-size: 2rem;">qr_code_scanner</i>
+        <div class="action-container">
+            <!-- 正道・主要操作 -->
+            <button class="atm-btn atm-primary" onclick="startApp()">
+                <i class="material-symbols-outlined" style="font-size: 2.5rem;">qr_code_scanner</i>
                 <span>開始する</span>
             </button>
-            <button class="btn-massive border" onclick="checkLatestVersion()">
-                <i class="material-symbols-outlined" style="font-size: 2rem;">update</i>
+            
+            <!-- 特殊・警告操作 -->
+            <button class="atm-btn atm-warning" onclick="checkLatestVersion()">
+                <i class="material-symbols-outlined" style="font-size: 2.5rem;">update</i>
                 <span>最新版の確認</span>
             </button>
-            <button class="btn-massive transparent" onclick="closeApp()">
+            
+            <!-- 終了操作 -->
+            <button class="atm-btn atm-neutral" onclick="closeApp()">
                 <span>アプリを終了する</span>
             </button>
         </div>
     </main>
 
     <!-- ========================================== -->
-    <!-- Scene 1：スキャン画面 (完全全画面スキャン) -->
+    <!-- Scene 1：スキャン画面 -->
     <!-- ========================================== -->
     <div id="scanner-container" class="hidden">
         <div class="overlay-ui top-nav">
-            <button class="circle extra transparent" onclick="returnToStartScreen()" style="background: rgba(0,0,0,0.5);">
-                <i class="material-symbols-outlined" style="font-size: 2rem; color: white;">close</i>
-            </button>
-            <button class="circle extra transparent" onclick="ui('#settings-dialog')" style="background: rgba(0,0,0,0.5);">
-                <i class="material-symbols-outlined" style="font-size: 2rem; color: white;">settings</i>
+            <button onclick="returnToStartScreen()">
+                <i class="material-symbols-outlined" style="font-size: 3rem;">close</i>
             </button>
         </div>
 
         <div id="reader"></div>
 
         <div class="overlay-ui bottom-toast">
-            <div class="toast-massive">
-                QRコードを写してください
-            </div>
+            QRコードを画面に写してください
         </div>
     </div>
 
     <!-- ========================================== -->
     <!-- Scene 2：ボトムシート (結果確認モーダル) -->
     <!-- ========================================== -->
-    <dialog class="bottom" id="bottom-sheet" style="border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 2rem;">
-        <h5 class="title-massive" id="modal-title" style="text-align: left; font-size: 2rem !important;">Google Driveで開く</h5>
-        <p class="text-massive" id="modal-desc" style="text-align: left;">一致するファイルを検索します</p>
+    <dialog class="bottom" id="bottom-sheet" style="border-top-left-radius: 40px; border-top-right-radius: 40px; padding: 3rem; background: #1e293b; color: #fff;">
+        <h5 id="modal-title" style="font-size: 2.4rem; font-weight: 900; margin-bottom: 0.5rem;">Google Drive検索</h5>
+        <p id="modal-desc" style="font-size: 1.4rem; color: #94a3b8; margin-bottom: 2rem;">一致するファイルを検索します</p>
         
-        <div style="background: var(--surface-variant); padding: 1.5rem; border-radius: 20px; margin: 1.5rem 0;">
-            <label style="font-size: 1rem; color: var(--on-surface-variant); font-weight: bold;">スキャンデータ</label>
-            <div id="modal-scanned-data" style="font-size: 1.5rem; font-weight: bold; word-break: break-all; margin-top: 0.5rem;"></div>
+        <div style="background: #0f172a; padding: 1.8rem; border-radius: 24px; margin-bottom: 2.5rem; border: 2px solid #334155;">
+            <label style="font-size: 1.1rem; color: #94a3b8; font-weight: bold; display: block; margin-bottom: 0.5rem;">スキャンデータ</label>
+            <div id="modal-scanned-data" style="font-size: 1.8rem; font-weight: bold; word-break: break-all; color: #f8fafc;"></div>
         </div>
 
-        <a id="modal-primary-btn" class="btn-massive primary" href="#" target="_blank" onclick="handleOpenLink()" style="text-decoration: none;">
-            <i class="material-symbols-outlined" style="font-size: 2rem;">open_in_new</i>
-            <span id="modal-primary-btn-text">開く</span>
-        </a>
-        <button class="btn-massive transparent" onclick="closeBottomSheet()">
-            キャンセル (再撮影)
-        </button>
-    </dialog>
-
-    <!-- ========================================== -->
-    <!-- 設定ダイアログ -->
-    <!-- ========================================== -->
-    <dialog id="settings-dialog" style="border-radius: 32px; padding: 2rem;">
-        <h5 class="title-massive" style="text-align: center; font-size: 2rem !important; margin-bottom: 2rem;">表示設定</h5>
-        
-        <button class="btn-massive border" onclick="changeFontSize('normal')" id="btn-size-normal">大 (標準)</button>
-        <button class="btn-massive border" onclick="changeFontSize('large')" id="btn-size-large">特大</button>
-        <button class="btn-massive border" onclick="changeFontSize('xlarge')" id="btn-size-xlarge">超特大</button>
-
-        <div style="margin-top: 2rem;">
-            <button class="btn-massive primary" onclick="ui('#settings-dialog')">完了</button>
+        <div class="action-container" style="max-width: none;">
+            <!-- 正道・主要アクション -->
+            <a id="modal-primary-btn" class="atm-btn atm-primary" href="#" target="_blank" onclick="handleOpenLink()" style="text-decoration: none;">
+                <i class="material-symbols-outlined" style="font-size: 2.5rem;">open_in_new</i>
+                <span id="modal-primary-btn-text">開く</span>
+            </a>
+            <!-- 終了・キャンセル -->
+            <button class="atm-btn atm-neutral" onclick="closeBottomSheet()">
+                キャンセル (再撮影)
+            </button>
         </div>
     </dialog>
 
@@ -180,33 +209,7 @@
         let html5QrCode = null;
         let isScanned = false;
 
-        // テーマカラーの適用 (BeerCSS)
-        ui('theme', '#0284c7');
-
-        // 文字サイズの一括変更
-        function applyFontSize(size) {
-            localStorage.setItem('qr_stock_fontsize', size);
-            const htmlElement = document.documentElement;
-
-            if (size === 'normal') htmlElement.style.fontSize = '16px'; 
-            if (size === 'large') htmlElement.style.fontSize = '20px';  
-            if (size === 'xlarge') htmlElement.style.fontSize = '24px'; 
-
-            ['normal', 'large', 'xlarge'].forEach(s => {
-                const btn = document.getElementById(`btn-size-${s}`);
-                if (btn) {
-                    if (s === size) {
-                        btn.classList.add('primary');
-                        btn.classList.remove('border');
-                    } else {
-                        btn.classList.add('border');
-                        btn.classList.remove('primary');
-                    }
-                }
-            });
-        }
-
-        function changeFontSize(size) { applyFontSize(size); }
+        ui('theme', '#2563eb');
 
         function startApp() {
             document.getElementById('start-screen').classList.add('hidden');
@@ -224,7 +227,7 @@
 
         function checkLatestVersion() {
             const status = document.getElementById('update-status');
-            status.innerText = "最新バージョンを確認中...";
+            status.innerText = "最新バージョン(banana)を確認中...";
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistration().then(registration => {
                     if (registration) {
@@ -250,9 +253,6 @@
         }
 
         function initApp() {
-            const savedSize = localStorage.getItem('qr_stock_fontsize') || 'normal';
-            applyFontSize(savedSize);
-
             const isDesktop = window.innerWidth > 1024 && !('ontouchstart' in window);
             if (isDesktop) {
                 document.getElementById('pc-guide-screen').classList.remove('hidden');
@@ -262,8 +262,8 @@
                 qrContainer.innerHTML = "";
                 new QRCode(qrContainer, {
                     text: window.location.href,
-                    width: 200,
-                    height: 200,
+                    width: 220,
+                    height: 220,
                     colorDark: "#000000",
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
@@ -276,7 +276,6 @@
             document.getElementById('start-screen').classList.remove('hidden');
         }
 
-        // ★修正ポイント: qrboxを削除し、全画面でのスキャンに変更（エラー回避とUX向上）
         function startCamera(cameraConfig) {
             if (html5QrCode) return;
             html5QrCode = new Html5Qrcode("reader");
@@ -286,7 +285,7 @@
                 onScanSuccess
             ).catch(err => { 
                 console.error("Camera Error", err); 
-                alert("カメラの起動に失敗しました。権限や環境を確認してください。");
+                alert("カメラの起動に失敗しました。権限を確認してください。");
             });
         }
 
@@ -304,22 +303,21 @@
 
             scannedData.innerText = decodedText;
 
-            // HTTPS等の場合の警告・分岐ロジック
             if (decodedText.startsWith("https://") || decodedText.startsWith("http://")) {
                 title.innerText = "⚠️ 外部Webサイト";
+                title.style.color = "#f87171";
                 desc.innerText = "安全性を確認の上アクセスしてください。";
                 primaryBtnText.innerText = "サイトを開く";
                 primaryBtn.href = decodedText;
-                primaryBtn.style.backgroundColor = "var(--error)";
-                primaryBtn.style.color = "var(--on-error)";
+                primaryBtn.className = "atm-btn atm-warning"; // 特殊・警告カラー（オレンジ）に変化
             } else {
                 title.innerText = "Google Drive検索";
+                title.style.color = "#ffffff";
                 desc.innerText = "一致するファイルを検索します";
                 primaryBtnText.innerText = "検索する";
                 const encodedQuery = encodeURIComponent(decodedText);
                 primaryBtn.href = `https://drive.google.com/drive/search?q=${encodedQuery}`;
-                primaryBtn.style.backgroundColor = ""; 
-                primaryBtn.style.color = "";
+                primaryBtn.className = "atm-btn atm-primary"; // 正道カラー（ブルー）に復帰
             }
 
             ui('#bottom-sheet');
