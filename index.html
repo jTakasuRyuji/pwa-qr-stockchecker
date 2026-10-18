@@ -21,6 +21,8 @@
     </script>
     <!-- html5-qrcode ライブラリ -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- QRコード生成用ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
         #reader {
             border: none !important;
@@ -43,21 +45,46 @@
 <body class="bg-gray-900 text-gray-900 h-screen w-screen overflow-hidden flex flex-col">
 
     <!-- ========================================== -->
-    <!-- Scene 1：スキャン画面 -->
+    <!-- PC用ガイド画面（PCで開いたときに表示） -->
+    <!-- ========================================== -->
+    <div id="pc-guide-screen" class="hidden absolute inset-0 z-50 bg-gray-900 text-white flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+        <div class="max-w-md w-full bg-gray-800 border border-gray-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-6 my-auto">
+            <div class="text-4xl">📦</div>
+            <div class="flex flex-col gap-2">
+                <h1 class="text-2xl font-bold">Inventory QR Stockchecker</h1>
+                <p class="text-sm text-gray-300 leading-relaxed">
+                    本番はスマートフォンでの利用を想定しています。スマホのカメラで下のQRコードをスキャンしてご利用ください。
+                </p>
+            </div>
+            
+            <div class="bg-white p-4 rounded-2xl shadow-inner flex flex-col items-center gap-2">
+                <div id="qrcode" class="flex justify-center"></div>
+                <span class="text-xs text-gray-600 font-medium">スマホのカメラでスキャン</span>
+            </div>
+
+            <!-- 実験的PCカメラモード起動ボタン -->
+            <button onclick="startPcCameraMode()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-2xl transition text-sm border border-gray-600 flex items-center justify-center gap-2">
+                <span>🖥️ 【実験的】PCカメラで試すモード</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- Scene 1：スキャン画面（スマホ / 実験的PC用） -->
     <!-- ========================================== -->
     <div id="scanner-container" class="relative flex-1 w-full h-full bg-black flex flex-col">
-        <!-- 上部ヘッダー（もどり/閉じるボタン[赤] ＆ シーン説明） -->
-        <header class="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-black/90 via-black/60 to-transparent flex flex-col gap-2 pt-4">
+        <!-- 上部ヘッダー -->
+        <header class="absolute top-0 left-0 right-0 z-30 p-4 bg-gradient-to-b from-black/90 via-black/60 to-transparent flex flex-col gap-3 pt-4">
             <div class="flex items-center justify-between w-full">
-                <!-- もどり・閉じるボタン (赤) -->
-                <button onclick="alert('ホーム画面または初期状態に戻ります')" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow transition flex items-center gap-1">
+                <!-- もどり・閉じるボタン [赤] -->
+                <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-sm py-2.5 px-5 rounded-2xl shadow-lg transition flex items-center gap-1.5">
                     <span>← もどり / 閉じる</span>
                 </button>
                 <span class="text-xs font-bold text-gray-400">Scene 1</span>
             </div>
 
             <!-- シーン説明バナー -->
-            <div class="text-center text-sm font-bold bg-twitter text-white py-2 px-4 rounded-xl shadow-md tracking-wide animate-pulse">
+            <div class="text-center text-lg font-bold bg-twitter text-white py-3 px-6 rounded-2xl shadow-xl tracking-wide animate-pulse">
                 QRコードを読み込んでください
             </div>
         </header>
@@ -65,14 +92,13 @@
         <!-- カメラビュー -->
         <div id="reader" class="absolute inset-0 w-full h-full"></div>
 
-        <!-- 画面全体の約70%を占める大きなスキャンガイド枠 -->
+        <!-- スキャンガイド枠 -->
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
             <div class="w-[70vw] h-[70vw] max-w-[320px] max-h-[320px] border-4 border-white/80 rounded-3xl relative shadow-2xl">
-                <!-- 四隅のアクセント装飾 -->
-                <div class="absolute w-8 h-8 border-t-8 border-l-8 border-twitter top-0 left-0 rounded-tl-2xl"></div>
-                <div class="absolute w-8 h-8 border-t-8 border-r-8 border-twitter top-0 right-0 rounded-tr-2xl"></div>
-                <div class="absolute w-8 h-8 border-b-8 border-l-8 border-twitter bottom-0 left-0 rounded-bl-2xl"></div>
-                <div class="absolute w-8 h-8 border-b-8 border-r-8 border-twitter bottom-0 right-0 rounded-br-2xl"></div>
+                <div class="absolute w-10 h-10 border-t-8 border-l-8 border-twitter top-0 left-0 rounded-tl-2xl"></div>
+                <div class="absolute w-10 h-10 border-t-8 border-r-8 border-twitter top-0 right-0 rounded-tr-2xl"></div>
+                <div class="absolute w-10 h-10 border-b-8 border-l-8 border-twitter bottom-0 left-0 rounded-bl-2xl"></div>
+                <div class="absolute w-10 h-10 border-b-8 border-r-8 border-twitter bottom-0 right-0 rounded-br-2xl"></div>
             </div>
         </div>
     </div>
@@ -80,38 +106,32 @@
     <!-- ========================================== -->
     <!-- Scene 2：確認・アクション画面 -->
     <!-- ========================================== -->
-    <div id="success-screen" class="hidden absolute inset-0 z-50 bg-white flex flex-col justify-between p-5">
-        <!-- 上部：閉じるボタン[赤] ＆ シーン説明 -->
-        <div class="flex flex-col gap-4 mt-2">
+    <div id="success-screen" class="hidden absolute inset-0 z-50 bg-white flex flex-col justify-between p-6">
+        <div class="flex flex-col gap-5 mt-2">
             <div class="flex items-center justify-between w-full">
-                <button id="close-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow transition">
+                <button id="close-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold text-sm py-2.5 px-5 rounded-2xl shadow-lg transition">
                     ✕ 閉じる
                 </button>
                 <span class="text-xs font-bold text-gray-400">Scene 2</span>
             </div>
 
-            <!-- 確認メッセージバナー -->
-            <div class="text-center bg-green-600 text-white font-bold py-3 px-4 rounded-2xl shadow-md text-sm tracking-wide">
+            <div class="text-center bg-green-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg text-base tracking-wide">
                 ✓ QRコードを確認しました
             </div>
 
-            <!-- 読み取った値の表示ボックス -->
-            <div class="flex flex-col gap-1.5">
+            <div class="flex flex-col gap-2">
                 <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">読み取りコード (UUID)</span>
-                <div id="scanned-id-display" class="text-sm font-mono bg-gray-100 p-3.5 rounded-2xl border border-gray-200 text-gray-800 break-all"></div>
+                <div id="scanned-id-display" class="text-base font-mono bg-gray-100 p-4 rounded-2xl border border-gray-200 text-gray-800 break-all font-semibold"></div>
             </div>
         </div>
 
-        <!-- スケッチ通りのボタン配置エリア -->
-        <div class="flex flex-col gap-3 mb-2">
-            <!-- 1. Driveで開くボタン (青) -->
-            <a id="drive-link" href="#" target="_blank" class="w-full bg-twitter hover:bg-twitterHover text-white font-bold py-3.5 px-6 rounded-2xl text-center transition shadow-lg text-base flex items-center justify-center gap-2">
+        <div class="flex flex-col gap-3.5 mb-4">
+            <a id="drive-link" href="#" target="_blank" class="w-full bg-twitter hover:bg-twitterHover text-white font-bold py-4 px-6 rounded-2xl text-center transition shadow-xl text-lg flex items-center justify-center gap-2">
                 <span>Driveで開く</span>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </a>
 
-            <!-- 2. キャンセルボタン (白) -->
-            <button id="cancel-btn" class="w-full bg-white hover:bg-gray-100 text-gray-700 border-2 border-gray-200 font-bold py-3.5 px-6 rounded-2xl text-center transition text-base shadow-sm flex items-center justify-center gap-2">
+            <button id="cancel-btn" class="w-full bg-white hover:bg-gray-100 text-gray-800 border-2 border-gray-300 font-bold py-4 px-6 rounded-2xl text-center transition text-base shadow-md flex items-center justify-center gap-2">
                 <span>キャンセル (再撮影)</span>
             </button>
         </div>
@@ -121,29 +141,70 @@
         let html5QrCode = null;
         let isScanned = false;
 
+        // デバイス判定と初期化
+        function initApp() {
+            const isDesktop = window.innerWidth > 1024 && !('ontouchstart' in window);
+            if (isDesktop) {
+                // PCの場合はガイド画面を表示
+                document.getElementById('pc-guide-screen').classList.remove('hidden');
+                document.getElementById('scanner-container').classList.add('hidden');
+                
+                const qrContainer = document.getElementById('qrcode');
+                qrContainer.innerHTML = "";
+                new QRCode(qrContainer, {
+                    text: window.location.href,
+                    width: 160,
+                    height: 160,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } else {
+                // スマホの場合は直接カメラ起動
+                startCamera({ facingMode: "environment" });
+            }
+        }
+
+        // 実験的PCカメラモードの起動
+        function startPcCameraMode() {
+            document.getElementById('pc-guide-screen').classList.add('hidden');
+            document.getElementById('scanner-container').classList.remove('hidden');
+            // PCの場合は内蔵/外付けカメラを優先指定（facingModeではなくデバイス指定かデフォルト）
+            startCamera({ facingMode: "user" });
+        }
+
+        function startCamera(cameraConfig) {
+            if (html5QrCode) return;
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                cameraConfig,
+                { fps: 10, qrbox: { width: 260, height: 260 } },
+                onScanSuccess
+            ).catch(err => {
+                console.error("カメラの起動に失敗しました", err);
+                alert("カメラの起動に失敗しました。カメラの接続や権限を確認してください。");
+            });
+        }
+
+        window.addEventListener('load', initApp);
+
         function onScanSuccess(decodedText, decodedResult) {
             if (isScanned) return;
             isScanned = true;
 
-            console.log(`Matched = ${decodedText}`);
-
-            // Google Driveの検索URL生成
             const encodedQuery = encodeURIComponent(decodedText);
             const driveSearchUrl = `https://drive.google.com/drive/search?q=${encodedQuery}`;
 
-            // Scene 1 を隠して Scene 2 を表示
             document.getElementById('scanner-container').classList.add('hidden');
             document.getElementById('success-screen').classList.remove('hidden');
             document.getElementById('scanned-id-display').innerText = decodedText;
             document.getElementById('drive-link').href = driveSearchUrl;
 
-            // カメラ一時停止
             if (html5QrCode) {
                 html5QrCode.pause();
             }
         }
 
-        // キャンセルボタン (白) の処理 -> Scene 1に戻る
         function returnToScanner() {
             isScanned = false;
             document.getElementById('success-screen').classList.add('hidden');
@@ -156,17 +217,6 @@
 
         document.getElementById('cancel-btn').addEventListener('click', returnToScanner);
         document.getElementById('close-btn').addEventListener('click', returnToScanner);
-
-        // カメラ起動設定（スケッチ通りの約70%ガイド枠に合わせた設定）
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 260, height: 260 } },
-            onScanSuccess
-        ).catch(err => {
-            console.error("カメラの起動に失敗しました", err);
-            alert("カメラの起動に失敗しました。ブラウザのカメラ権限を確認してください。");
-        });
 
         // サービスワーカーの登録
         if ('serviceWorker' in navigator) {
