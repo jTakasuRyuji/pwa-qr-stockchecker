@@ -6,6 +6,8 @@
     <title>Inventory QR Stockchecker</title>
     <link rel="manifest" href="manifest.json?v=0.2">
     
+    <!-- ⚠️ Tailwind CSSは競合の原因となるため完全に削除しました -->
+
     <!-- BeerCSS & Material Design 3 (CDN) -->
     <link href="https://cdn.jsdelivr.net/npm/beercss@3.7.12/dist/cdn/beer.min.css" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.7.12/dist/cdn/beer.min.js"></script>
@@ -18,152 +20,160 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <style>
-        /* カメラビューを全画面に強制配置 */
+        /* ==========================================
+           スマホで絶対に小さくならないための強制レイアウト
+           ========================================== */
+        body { margin: 0; height: 100vh; overflow: hidden; background-color: var(--background); }
+        
+        /* 画面中央への配置 */
+        .fullscreen-flex {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .w-full { width: 100%; max-width: 450px; margin: 0 auto; }
+        
+        /* 絶対に小さくならない巨大ボタンとテキスト */
+        .btn-massive {
+            width: 100%;
+            min-height: 80px !important;
+            font-size: 1.5rem !important;
+            border-radius: 24px !important;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            font-weight: bold;
+        }
+
+        .icon-massive { font-size: 6rem !important; margin-bottom: 1rem; color: var(--primary); }
+        .title-massive { font-size: 3rem !important; font-weight: 900; margin-bottom: 0.5rem; text-align: center; }
+        .text-massive { font-size: 1.2rem !important; text-align: center; color: var(--on-surface-variant); font-weight: bold; }
+
+        /* カメラ周り */
         #reader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; background: #000; }
         #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
         #reader__scan_region, #reader__dashboard_section { display: none !important; }
         
-        /* UIをカメラの上にオーバーレイ */
-        .overlay-ui { position: relative; z-index: 10; }
-        .hidden { display: none !important; }
+        .overlay-ui { position: fixed; z-index: 10; }
+        .top-nav { top: 1.5rem; left: 1.5rem; right: 1.5rem; display: flex; justify-content: space-between; pointer-events: none; }
+        .top-nav button { pointer-events: auto; width: 64px; height: 64px; }
+        .bottom-toast { bottom: 4rem; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; }
+        
+        .toast-massive {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 24px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
 
-        /* スキャン時のトースト指示用 */
-        .scan-toast { position: fixed; bottom: 4rem; left: 50%; transform: translateX(-50%); z-index: 10; white-space: nowrap; }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="dark"> <!-- デフォルトをダークテーマ（カメラアプリでよくある仕様）に設定 -->
+<body class="dark">
 
     <!-- ========================================== -->
     <!-- PCアクセス時の案内画面 -->
     <!-- ========================================== -->
-    <main class="responsive center-align hidden" id="pc-guide-screen">
-        <article class="large-padding border">
-            <i class="extra">inventory_2</i>
-            <h5 class="bold">QR Stockchecker</h5>
-            <p>スマートフォン専用のPWAツールです。<br>お手元のスマホカメラで以下のQRコードを読み取ってアクセスしてください。</p>
-            
-            <div class="space"></div>
-            <div id="qrcode" class="center-align" style="background:white; padding:1rem; border-radius:1rem; display:inline-block;"></div>
-            <div class="space"></div>
-
-            <button class="border max" onclick="startPcCameraMode()">
-                <i>videocam</i>
-                <span>PCカメラでテスト起動</span>
-            </button>
-        </article>
+    <main id="pc-guide-screen" class="fullscreen-flex hidden">
+        <i class="material-symbols-outlined icon-massive">inventory_2</i>
+        <div class="title-massive" style="font-size: 2rem !important;">QR Stockchecker</div>
+        <div class="text-massive" style="margin-bottom: 2rem;">お手元のスマホでスキャンしてください</div>
+        <div id="qrcode" style="background:white; padding:1.5rem; border-radius:1rem;"></div>
+        <div style="margin-top: 2rem; width: 100%; max-width: 400px;">
+            <button class="btn-massive border" onclick="startPcCameraMode()">PCカメラでテスト起動</button>
+        </div>
     </main>
 
     <!-- ========================================== -->
     <!-- Scene 0：スタート・最新版確認画面 -->
     <!-- ========================================== -->
-    <main class="responsive center-align" id="start-screen">
-        <div class="space extra"></div>
-        <i class="extra text-primary" style="font-size: 5rem;">inventory_2</i>
-        <div class="space"></div>
-        <h3 class="bold">QR Stock</h3>
-        <p class="secondary-text">v0.2 - 備品・在庫管理PWA</p>
-        <p class="primary-text" id="update-status"></p>
+    <main id="start-screen" class="fullscreen-flex">
+        <i class="material-symbols-outlined icon-massive">inventory_2</i>
+        <div class="title-massive">QR Stock</div>
+        <div class="text-massive">v0.2 - 備品・在庫管理PWA</div>
+        <div id="update-status" class="text-massive" style="min-height: 2rem; margin-bottom: 2rem; color: var(--primary);"></div>
 
-        <div class="space extra"></div>
-
-        <!-- MD3標準の巨大ボタン群 -->
-        <nav class="drawer no-space">
-            <button class="extra max primary" onclick="startApp()">
-                <i>qr_code_scanner</i>
+        <div class="w-full">
+            <button class="btn-massive primary" onclick="startApp()">
+                <i class="material-symbols-outlined" style="font-size: 2rem;">qr_code_scanner</i>
                 <span>開始する</span>
             </button>
-            <div class="space"></div>
-            <button class="large max border" onclick="checkLatestVersion()">
-                <i>update</i>
+            <button class="btn-massive border" onclick="checkLatestVersion()">
+                <i class="material-symbols-outlined" style="font-size: 2rem;">update</i>
                 <span>最新版の確認</span>
             </button>
-            <div class="space"></div>
-            <button class="large max transparent" onclick="closeApp()">
+            <button class="btn-massive transparent" onclick="closeApp()">
                 <span>アプリを終了する</span>
             </button>
-        </nav>
+        </div>
     </main>
 
     <!-- ========================================== -->
     <!-- Scene 1：スキャン画面 -->
     <!-- ========================================== -->
     <div id="scanner-container" class="hidden">
-        <!-- 上部操作ナビゲーション -->
-        <nav class="top overlay-ui large-padding">
-            <button class="circle transparent large" onclick="returnToStartScreen()">
-                <i>close</i>
+        <div class="overlay-ui top-nav">
+            <button class="circle extra transparent" onclick="returnToStartScreen()" style="background: rgba(0,0,0,0.5);">
+                <i class="material-symbols-outlined" style="font-size: 2rem; color: white;">close</i>
             </button>
-            <div class="max"></div>
-            <button class="circle transparent large" onclick="ui('#settings-dialog')">
-                <i>settings</i>
+            <button class="circle extra transparent" onclick="ui('#settings-dialog')" style="background: rgba(0,0,0,0.5);">
+                <i class="material-symbols-outlined" style="font-size: 2rem; color: white;">settings</i>
             </button>
-        </nav>
+        </div>
 
-        <!-- カメラプレビュー -->
         <div id="reader"></div>
 
-        <!-- 下部指示トースト -->
-        <div class="overlay-ui scan-toast">
-            <article class="round no-elevate" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);">
-                <nav>
-                    <i class="primary-text" style="animation: pulse 1.5s infinite;">radio_button_checked</i>
-                    <span class="bold text-white">QRコードを画面に写してください</span>
-                </nav>
-            </article>
+        <div class="overlay-ui bottom-toast">
+            <div class="toast-massive">
+                QRコードを写してください
+            </div>
         </div>
     </div>
 
     <!-- ========================================== -->
     <!-- Scene 2：ボトムシート (結果確認モーダル) -->
     <!-- ========================================== -->
-    <!-- BeerCSSは <dialog class="bottom"> と書くだけで完璧なボトムシートになります -->
-    <dialog class="bottom" id="bottom-sheet">
-        <nav>
-            <i class="extra primary-text" id="modal-icon">inventory_2</i>
-            <div class="max">
-                <h5 class="bold" id="modal-title">Google Driveで開く</h5>
-                <p id="modal-desc">一致するファイルをDrive上で検索します</p>
-            </div>
-        </nav>
-
-        <div class="space"></div>
+    <dialog class="bottom" id="bottom-sheet" style="border-top-left-radius: 32px; border-top-right-radius: 32px; padding: 2rem;">
+        <h5 class="title-massive" id="modal-title" style="text-align: left; font-size: 2rem !important;">Google Driveで開く</h5>
+        <p class="text-massive" id="modal-desc" style="text-align: left;">一致するファイルを検索します</p>
         
-        <article class="border">
-            <label>スキャンデータ</label>
-            <div id="modal-scanned-data" class="bold" style="word-break: break-all;"></div>
-        </article>
+        <div style="background: var(--surface-variant); padding: 1.5rem; border-radius: 20px; margin: 1.5rem 0;">
+            <label style="font-size: 1rem; color: var(--on-surface-variant); font-weight: bold;">スキャンデータ</label>
+            <div id="modal-scanned-data" style="font-size: 1.5rem; font-weight: bold; word-break: break-all; margin-top: 0.5rem;"></div>
+        </div>
 
-        <div class="space"></div>
-
-        <nav class="right-align">
-            <button class="transparent max" onclick="closeBottomSheet()">キャンセル (再撮影)</button>
-            <a id="modal-primary-btn" href="#" target="_blank" class="primary max extra" onclick="handleOpenLink()">
-                <i>open_in_new</i>
-                <span>開く</span>
-            </a>
-        </nav>
+        <button id="modal-primary-btn" class="btn-massive primary" onclick="handleOpenLink()">
+            <i class="material-symbols-outlined" style="font-size: 2rem;">open_in_new</i>
+            <span>開く</span>
+        </button>
+        <button class="btn-massive transparent" onclick="closeBottomSheet()">
+            キャンセル (再撮影)
+        </button>
     </dialog>
 
     <!-- ========================================== -->
     <!-- 設定ダイアログ -->
     <!-- ========================================== -->
-    <dialog id="settings-dialog">
-        <h5 class="bold">表示設定</h5>
-        <p>テキストとUIのサイズを選択します。</p>
+    <dialog id="settings-dialog" style="border-radius: 32px; padding: 2rem;">
+        <h5 class="title-massive" style="text-align: center; font-size: 2rem !important; margin-bottom: 2rem;">表示設定</h5>
         
-        <div class="space"></div>
+        <button class="btn-massive border" onclick="changeFontSize('normal')" id="btn-size-normal">大 (標準)</button>
+        <button class="btn-massive border" onclick="changeFontSize('large')" id="btn-size-large">特大</button>
+        <button class="btn-massive border" onclick="changeFontSize('xlarge')" id="btn-size-xlarge">超特大</button>
 
-        <nav class="center-align">
-            <button class="border max" onclick="changeFontSize('normal')">大 (標準)</button>
-            <button class="border max" onclick="changeFontSize('large')">特大</button>
-            <button class="border max" onclick="changeFontSize('xlarge')">超特大</button>
-        </nav>
-
-        <div class="space"></div>
-
-        <nav class="right-align">
-            <button class="primary max" onclick="ui('#settings-dialog')">完了</button>
-        </nav>
+        <div style="margin-top: 2rem;">
+            <button class="btn-massive primary" onclick="ui('#settings-dialog')">完了</button>
+        </div>
     </dialog>
 
     <!-- Script Logic -->
@@ -171,24 +181,32 @@
         let html5QrCode = null;
         let isScanned = false;
 
-        // BeerCSSのカスタムテーマ（ブランドカラーの青を指定）
         ui('theme', '#0284c7');
 
-        // ==== MD3に基づくフォント・UI全体のスケール一括変更 ====
-        // BeerCSSはremベースなので、htmlのフォントサイズを変えるだけで
-        // ボタンの高さ、余白、アイコンの大きさなど全てが完璧な比率で連動して大きくなります。
         function applyFontSize(size) {
             localStorage.setItem('qr_stock_fontsize', size);
             const htmlElement = document.documentElement;
 
-            if (size === 'normal') htmlElement.style.fontSize = '18px'; // 標準でもWebより少し大きめ
-            if (size === 'large') htmlElement.style.fontSize = '22px';  // 特大
-            if (size === 'xlarge') htmlElement.style.fontSize = '26px'; // 超特大
+            if (size === 'normal') htmlElement.style.fontSize = '16px'; 
+            if (size === 'large') htmlElement.style.fontSize = '20px';  
+            if (size === 'xlarge') htmlElement.style.fontSize = '24px'; 
+
+            ['normal', 'large', 'xlarge'].forEach(s => {
+                const btn = document.getElementById(`btn-size-${s}`);
+                if (btn) {
+                    if (s === size) {
+                        btn.classList.add('primary');
+                        btn.classList.remove('border');
+                    } else {
+                        btn.classList.add('border');
+                        btn.classList.remove('primary');
+                    }
+                }
+            });
         }
 
         function changeFontSize(size) { applyFontSize(size); }
 
-        // ==== 画面遷移・カメラ制御 ====
         function startApp() {
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('scanner-container').classList.remove('hidden');
@@ -243,8 +261,8 @@
                 qrContainer.innerHTML = "";
                 new QRCode(qrContainer, {
                     text: window.location.href,
-                    width: 160,
-                    height: 160,
+                    width: 200,
+                    height: 200,
                     colorDark: "#000000",
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
@@ -269,12 +287,10 @@
 
         window.addEventListener('load', initApp);
 
-        // ==== QRコード読み取り成功時の処理 ====
         function onScanSuccess(decodedText) {
             if (isScanned) return;
             isScanned = true;
 
-            const icon = document.getElementById('modal-icon');
             const title = document.getElementById('modal-title');
             const desc = document.getElementById('modal-desc');
             const scannedData = document.getElementById('modal-scanned-data');
@@ -283,34 +299,33 @@
             scannedData.innerText = decodedText;
 
             if (decodedText.startsWith("https://") || decodedText.startsWith("http://")) {
-                icon.innerText = "warning";
-                icon.classList.replace('primary-text', 'error-text'); // 警告色に
-                title.innerText = "外部Webサイト";
+                title.innerText = "⚠️ 外部Webサイト";
                 desc.innerText = "安全性を確認の上アクセスしてください。";
+                primaryBtn.querySelector('span').innerText = "サイトを開く";
                 primaryBtn.href = decodedText;
-                primaryBtn.classList.replace('primary', 'error'); // ボタンも警告色に
+                primaryBtn.style.backgroundColor = "var(--error)";
+                primaryBtn.style.color = "var(--on-error)";
             } else {
-                icon.innerText = "inventory_2";
-                icon.classList.replace('error-text', 'primary-text');
                 title.innerText = "Google Drive検索";
-                desc.innerText = "一致するファイルをDrive上で検索します";
+                desc.innerText = "一致するファイルを検索します";
+                primaryBtn.querySelector('span').innerText = "検索する";
                 const encodedQuery = encodeURIComponent(decodedText);
                 primaryBtn.href = `https://drive.google.com/drive/search?q=${encodedQuery}`;
-                primaryBtn.classList.replace('error', 'primary');
+                primaryBtn.style.backgroundColor = ""; 
+                primaryBtn.style.color = "";
             }
 
-            // BeerCSSの機能でボトムシートを開く
             ui('#bottom-sheet');
             if (html5QrCode) html5QrCode.pause();
         }
 
         function handleOpenLink() {
-            ui('#bottom-sheet'); // ボトムシートを閉じる
+            ui('#bottom-sheet');
             resetScanner();
         }
 
         function closeBottomSheet() {
-            ui('#bottom-sheet'); // ボトムシートを閉じる
+            ui('#bottom-sheet');
             resetScanner();
         }
 
